@@ -1,0 +1,10 @@
+src/main/.classpath
+src/main/.project
+src/main/project.properties
+.externalToolBuilders/NDK_Builder.launch
+src/main/.externalToolBuilders/jni_Builder.launch
+src/main/obj/local/armeabi/libRongIMLib.so
+src/main/obj/local/armeabi/objs/RongIMLib/RongIMLib.o
+src/main/obj/local/armeabi/objs/RongIMLib/RongIMLib.o.d
+src/main/obj/local/x86/objs/RongIMLib/RongIMLib.o
+src/main/obj/local/x86/objs/RongIMLib/RongIMLib.o.d

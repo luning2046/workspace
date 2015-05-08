@@ -1,0 +1,7 @@
+bin
+gen
+obj
+project.properties
+.classpath
+.project
+.externalToolBuilders/jni_Builder.launch

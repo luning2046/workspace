@@ -1,0 +1,6 @@
+[submodule "imkit"]
+	path = imkit
+	url = git@gitlab.rongcloud.net:client-team/android_imkit.git
+[submodule "imlib"]
+	path = imlib
+	url = git@gitlab.rongcloud.net:client-team/android_imlib.git

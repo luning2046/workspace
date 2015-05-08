@@ -1,0 +1,344 @@
+package io.rong.imkit.fragment;
+
+import io.rong.imkit.RCloudContext;
+import io.rong.imkit.logic.MessageLogic;
+import io.rong.imkit.model.UIUserInfo;
+import io.rong.imkit.service.RCloudService;
+import io.rong.imlib.RongIMClient;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.media.RingtoneManager;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.os.Vibrator;
+import android.text.TextUtils;
+import android.util.Log;
+import android.widget.Toast;
+
+public abstract class ActionBaseFrament extends BaseFragment {
+
+    private BroadcastReceiver mBroadcastReceiver;
+    private IntentFilter mIntentFilter;
+    private Map<String, List<ActionCallback>> mActionCallbackMap;
+    private String mCurrentConversationTargetId;
+    private boolean isRegister = false;
+
+    private ArrayList<String> customActions = new ArrayList<String>();
+    private ArrayList<String> bundleActions = new ArrayList<String>();
+
+    private int playCount = 0;
+
+    public final static String ACTION_BUNDLE_IO_RONG_IMKIT_CONVERSATION_LIST = "action_bundle_io_rong_imkit_conversation_list";
+    public final static String ACTION_BUNDLE_IO_RONG_IMKIT_CONVERSATION = "action_bundle_io_rong_imkit_conversation";
+    public final static String ACTION_BUNDLE_IO_RONG_IMKIT_CONVERSATION_SETTING = "action_bundle_io_rong_imkit_conversation_setting";
+    public final static String ACTION_BUNDLE_IO_RONG_IMKIT_FRIEND_SELECT = "action_bundle_io_rong_imkit_friend_select";
+
+    protected final static int HANDLE_GET_USER_INFO_WHAT = 990001;
+
+    private Handler mHandler;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        mIntentFilter = new IntentFilter();
+        mBroadcastReceiver = new BaseReceiver();
+        mActionCallbackMap = new HashMap<String, List<ActionCallback>>();
+
+        registerActions(customActions);
+        registerBunlderActions(bundleActions);
+
+        mHandler = new Handler(new Handler.Callback() {
+            @Override
+            public boolean handleMessage(Message msg) {
+                rongHandleMessage(msg);
+                return false;
+            }
+        });
+    }
+
+    protected void rongHandleMessage(Message msg) {
+
+    }
+
+    public Handler getHandler() {
+        return mHandler;
+    }
+
+
+    public void sendAction(Intent intent, ActionCallback actionCallback) {
+
+        String action = intent.getAction();
+
+        if (!mIntentFilter.hasAction(action)) {
+            mIntentFilter.addAction(action);
+            getActivity().registerReceiver(mBroadcastReceiver, mIntentFilter);
+            isRegister = true;
+        }
+
+        if (!mActionCallbackMap.containsKey(action)) {
+            mActionCallbackMap.put(action, Collections.synchronizedList(new ArrayList<ActionCallback>()));
+        }
+
+        mActionCallbackMap.get(action).add(actionCallback);
+        intent.putExtra(RCloudService.EXTRA_CATION_HASHCODE, actionCallback.hashCode());
+        Log.d("APIBaseActivity--sendAction-action.hashCode", "action.hashCode:" + action.hashCode() + "|" + action);
+
+        RCloudContext.getInstance().sendAction(intent);
+    }
+//======================接收发送消息的广播接收器=================MessageLogic发送广播===================================================================
+    private class BaseReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+
+            if (bundleActions.contains(action)) {
+                recevicePageIntnet(intent);
+                return;
+            }
+
+            if (customActions.contains(action)) {
+
+                if (MessageLogic.ACTION_P2P_MESSAGE_RECEVICE.equals(action)) {
+
+                    if (!TextUtils.isEmpty(mCurrentConversationTargetId)) {
+                        String messageTargetId = intent.getStringExtra(MessageLogic.TARGET_ID);
+
+                        if (!mCurrentConversationTargetId.equals(messageTargetId)) {
+                            newMessageReminder();
+                        }
+                    } else {
+                        Log.d("mCurrentConversationTargetId", "-------------newMessageReminder-------111-------->");
+                        newMessageReminder();
+                    }
+                }
+
+                receviceData(intent);
+
+                if (RCloudContext.CLIENT_CONNECTED_TO_SDK.equals(action)) {
+                    Toast.makeText(getActivity(), "connected", Toast.LENGTH_LONG).show();
+                } else if (RCloudContext.CLIENT_DISCONNECT_TO_SDK.equals(action)) {
+                    Toast.makeText(getActivity(), "disconnect", Toast.LENGTH_LONG).show();
+                }
+
+                return;
+            }
+
+            if (mActionCallbackMap != null && mActionCallbackMap.containsKey(action)) {
+
+                int hashCode = intent.getIntExtra(RCloudService.EXTRA_CATION_HASHCODE, -1);
+                intent.removeExtra(RCloudService.EXTRA_CATION_HASHCODE);
+                List<ActionCallback> list = mActionCallbackMap.get(action);
+                Log.d("action.hashCode---1", "action.hashCode:" + action.hashCode() + "|" + action);
+
+                if (list != null) {
+                    int listIndex = -1;
+
+                    for (int i = 0; i < list.size(); i++) {
+                        Log.d("list-hashCode", "list.get(i).hashCode:" + list.get(i).hashCode() + "|" + list.get(i));
+
+                        if (hashCode == list.get(i).hashCode()) {
+
+                            listIndex = i;
+                            break;
+                        }
+                    }
+
+                    if (listIndex >= 0) {
+
+                        boolean isComplete = intent.getBooleanExtra(MessageLogic.INTENT_IS_COMPLETE, false);
+
+                        if (isComplete) {
+                            list.remove(listIndex).callback(intent);
+                            Log.d("APIBaseActivity", "remove callback action:" + action);
+                        } else {
+                            list.get(listIndex).callback(intent);
+                            Log.d("APIBaseActivity", "GET callback action:" + action);
+                        }
+
+                    } else {
+                        Log.d("APIBaseActivity---", "actionCall is null" + action);
+                    }
+
+                    if (list.isEmpty()) {
+                        mActionCallbackMap.remove(action);
+                    }
+                }
+            }
+
+        }
+    }
+
+    public interface ActionCallback {
+        public void callback(Intent intent);
+    }
+
+    public void receviceData(Intent intent) {
+        Log.d("BaseActivity---|||--receviceData", intent.getAction());
+    }
+
+    public void registerActions(List<String> actions) {
+
+        if (actions == null || actions.isEmpty()) {
+            return;
+        }
+        for (String action : actions) {
+            if (!mIntentFilter.hasAction(action)) {
+                mIntentFilter.addAction(action);
+                getActivity().registerReceiver(mBroadcastReceiver, mIntentFilter);
+                isRegister = true;
+            }
+        }
+    }
+    
+    public void registerBunlderActions(List<String> actions) {
+
+        if (actions == null || actions.isEmpty()) {
+            return;
+        }
+
+        for (String action : actions) {
+
+            if (!mIntentFilter.hasAction(action)) {
+                mIntentFilter.addAction(action);
+                getActivity().registerReceiver(mBroadcastReceiver, mIntentFilter);
+                isRegister = true;
+            }
+        }
+    }
+    public void recevicePageIntnet(Intent intent) {}
+
+    @Override
+    public void onDestroy() {
+
+        if (isRegister) {
+            getActivity().unregisterReceiver(mBroadcastReceiver);
+        }
+
+        mCurrentConversationTargetId = null;
+
+        super.onDestroyView();
+    }
+
+//来新消息了，播放新消息声音
+    private void newMessageReminder() {
+        playCount++;
+
+        Log.d("mCurrentConversationTargetId", "playCount1111:" + playCount);
+
+        if (playCount > 1)
+            return;
+
+        Log.d("mCurrentConversationTargetId", "-------------newMessageReminder----------2222----->");
+
+        final AudioManager audioManager = (AudioManager) getActivity().getSystemService(Context.AUDIO_SERVICE);
+
+        switch (audioManager.getRingerMode()) {
+            case AudioManager.RINGER_MODE_SILENT:
+                playCount = 0;
+                break;
+            case AudioManager.RINGER_MODE_VIBRATE:
+                Vibrator vibrator = (Vibrator) getActivity().getSystemService(Context.VIBRATOR_SERVICE);
+                vibrator.vibrate(200);
+                playCount = 0;
+                break;
+            case AudioManager.RINGER_MODE_NORMAL:
+                playNewMessageSound();
+                break;
+        }
+
+        int current = audioManager.getStreamVolume(AudioManager.STREAM_ALARM);
+        Log.d("mCurrentConversationTargetId", "-------------newMessageReminder----------Vibrator----->" + current);
+
+    }
+
+    private void playNewMessageSound() {
+
+        try {
+            MediaPlayer mMediaPlayer = new MediaPlayer();
+            Uri alert = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+//			mMediaPlayer.setAudioStreamType(AudioManager.STREAM_ALARM);
+
+            mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+
+                @Override
+                public void onPrepared(MediaPlayer mp) {
+                    mp.start();
+                }
+            });
+
+            mMediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                @Override
+                public void onCompletion(MediaPlayer mp) {
+
+                    Log.d("mCurrentConversationTargetId", "playCount222:" + playCount);
+                    playCount = 0;
+
+                    mp.reset();
+                    mp.release();
+                    mp = null;
+                }
+            });
+
+            mMediaPlayer.setDataSource(getActivity(), alert);
+            mMediaPlayer.prepare();
+
+
+        } catch (IllegalStateException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void setCurrentCoversationTargetId(String mCurrentTargetId) {
+        this.mCurrentConversationTargetId = mCurrentTargetId;
+    }
+    
+//==================这个方法的执行由 ConversationListAdapter的“mOnGetDataListener.getUserInfo(position, conversation.getTargetId());//第二个参数targetId就是对方用户的id”这句触发===========
+    protected void getUserInfo(String userId, final GetUserInfoCallback getUserInfoCallback) {
+        if (getUserInfoCallback == null) return;
+
+      //===============GetUserInfoProvider是在RongIM中定义的接口，===这个接口是用户重写=======功能根据id获取用户信息========================================
+        if (RCloudContext.getInstance().getGetUserInfoProvider() != null) {
+        	
+            RongIMClient.UserInfo userInfo = RCloudContext.getInstance().getGetUserInfoProvider().getUserInfo(userId);
+
+            if (userInfo != null) {//用户重写了GetUserInfoProvider
+                UIUserInfo uiUserInfo = new UIUserInfo(userInfo);
+                getUserInfoCallback.onSuccess(uiUserInfo);
+            } 
+        } else {//==============重亚峰本地数据库获取用户信息==========================================================================
+            RCloudContext.getInstance().getRongIMClient().getUserInfo(userId, new RongIMClient.GetUserInfoCallback() {
+                @Override
+                public void onSuccess(RongIMClient.UserInfo user) {
+                    UIUserInfo uiUserInfo = new UIUserInfo(user);
+                    getUserInfoCallback.onSuccess(uiUserInfo);
+                }
+                @Override
+                public void onError(ErrorCode errorCode) {
+                    getUserInfoCallback.onError();
+                }
+            });
+        }
+    }
+
+    public interface GetUserInfoCallback {
+        public void onSuccess(UIUserInfo user);
+        public void onError();
+    }
+}

@@ -1,0 +1,6 @@
+voip/bin
+voip/gen
+voip/obj
+voip/project.properties
+voip/.classpath
+voip/.project

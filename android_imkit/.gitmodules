@@ -1,0 +1,4 @@
+[submodule "src/voip"]
+	path = src/voip
+	url = git@gitlab.rongcloud.net:client-team/android_imkit_voip.git
+

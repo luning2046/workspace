@@ -1,0 +1,10 @@
+imlib/src/main/bin
+imlib/src/main/gen
+imlib/src/main/obj
+imkit/src/main/bin
+imkit/src/main/gen
+imkit/src/main/obj
+demo/src/main/bin
+demo/src/main/gen
+demo/src/main/obj
+local.properties

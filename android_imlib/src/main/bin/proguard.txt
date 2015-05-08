@@ -1,0 +1,9 @@
+# view AndroidManifest.xml #generated:24
+-keep class io.rong.imlib.PushService { <init>(...); }
+
+# view AndroidManifest.xml #generated:29
+-keep class io.rong.imlib.RongReceiver { <init>(...); }
+
+# view AndroidManifest.xml #generated:27
+-keep class io.rong.imlib.RongService { <init>(...); }
+

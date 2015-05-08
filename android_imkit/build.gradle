@@ -1,0 +1,47 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 19
+    buildToolsVersion '19.1.0'
+
+    defaultConfig {
+        applicationId "io.rong.imkit"
+        minSdkVersion 9
+        targetSdkVersion 19
+        versionCode 1
+        versionName "1.0"
+    }
+
+    sourceSets {
+        main {
+            aidl.srcDirs = ['src/main/java','src/voip/java']
+            manifest.srcFile 'src/main/AndroidManifest.xml'
+            java.srcDirs = ['src/main/java','src/voip/java']
+            resources.srcDirs = ['src/main/java','src/voip/java']
+            aidl.srcDirs = ['src/main/java','src/voip/java']
+            renderscript.srcDirs = ['src/main/java','src/voip/java']
+            res.srcDirs = ['src/main/res','src/voip/res']
+            assets.srcDirs = ['src/main/assets','src/voip/assets']
+            jni.srcDirs = []
+        }
+    }
+
+
+    buildTypes {
+        release {
+            runProguard false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile 'com.android.support:support-v4:19.0.0'
+    compile 'com.sea_monster:core:0.0.23@aar'
+    compile 'com.github.chrisbanes.bitmapcache:library:2.3@jar'
+    compile 'com.jakewharton:disklrucache:2.0.2@jar'
+    compile 'com.github.chrisbanes.photoview:library:1.2.3'
+    compile project(':imlib')
+}
